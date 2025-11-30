@@ -24,27 +24,36 @@
         sans-serif;
     }
 
+    /* 座標顯示 bar：改成左右貼邊，不會被裁掉 */
     #coordPanel {
       position: absolute;
-      left: 50%;
-      bottom: 20px;
-      transform: translateX(-50%);
-      padding: 10px 14px;
+      left: 8px;
+      right: 8px;
+      bottom: 12px;
+      padding: 8px 10px;
       background: rgba(0, 0, 0, 0.55);
       color: #fff;
       font-size: 14px;
       border-radius: 999px;
       backdrop-filter: blur(8px);
-      display: inline-flex;
-      gap: 8px;
+      display: flex;
       align-items: center;
+      gap: 8px;
       z-index: 10;
-      white-space: nowrap;
     }
 
-    #coordPanel code {
+    #coordLabel {
+      flex-shrink: 0;
+      opacity: 0.8;
+    }
+
+    #coordText {
       font-family: Menlo, Consolas, monospace;
       font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1 1 auto;
     }
 
     #copyBtn {
@@ -55,11 +64,35 @@
       color: #fff;
       font-size: 12px;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
     #copyBtn:disabled {
       opacity: 0.4;
       cursor: default;
+    }
+
+    /* 手機：縮小字體，隱藏 label，留座標 */
+    @media (max-width: 600px) {
+      #coordPanel {
+        bottom: 10px;
+        padding: 6px 8px;
+        font-size: 12px;
+        gap: 6px;
+      }
+
+      #coordLabel {
+        display: none; /* 節省寬度，只顯示座標 */
+      }
+
+      #coordText {
+        font-size: 11px;
+      }
+
+      #copyBtn {
+        padding: 2px 8px;
+        font-size: 11px;
+      }
     }
   </style>
 </head>
@@ -67,7 +100,7 @@
   <div id="cesiumContainer"></div>
 
   <div id="coordPanel">
-    <span>Selected (DD):</span>
+    <span id="coordLabel">Selected (DD):</span>
     <code id="coordText">Click on the globe to get coordinates</code>
     <button id="copyBtn" disabled>Copy</button>
   </div>
@@ -75,19 +108,17 @@
   <!-- CesiumJS -->
   <script src="https://unpkg.com/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
   <script>
-    // 你的 Cesium ion token
     Cesium.Ion.defaultAccessToken =
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    // 1）建立 OpenStreetMap provider
+    // OpenStreetMap 做底圖（用 baseLayer，避免被 Bing 蓋掉）
     const osmProvider = new Cesium.OpenStreetMapImageryProvider({
       url: "https://tile.openstreetmap.org/"
     });
 
-    // 2）用 baseLayer 指定 OSM 為預設底圖
     const viewer = new Cesium.Viewer("cesiumContainer", {
       baseLayer: Cesium.ImageryLayer.fromProviderAsync(osmProvider),
-      baseLayerPicker: false,   // 關掉原生選單，避免被換回 Bing
+      baseLayerPicker: false,
       animation: false,
       timeline: false,
       geocoder: false,
@@ -101,7 +132,6 @@
 
     viewer.scene.globe.depthTestAgainstTerrain = true;
 
-    // 3）DD 座標 + Copy
     const coordTextEl = document.getElementById("coordText");
     const copyBtn = document.getElementById("copyBtn");
     let lastCoord = "";
