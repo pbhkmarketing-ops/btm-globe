@@ -14,7 +14,8 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
     }
 
     #coordPanel {
@@ -27,12 +28,12 @@
       color: #fff;
       font-size: 14px;
       border-radius: 999px;
+      backdrop-filter: blur(8px);
       display: inline-flex;
       gap: 8px;
       align-items: center;
       z-index: 10;
       white-space: nowrap;
-      backdrop-filter: blur(8px);
     }
 
     #coordPanel code {
@@ -49,6 +50,11 @@
       font-size: 12px;
       cursor: pointer;
     }
+
+    #copyBtn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
@@ -62,23 +68,18 @@
 
   <script src="https://unpkg.com/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
   <script>
+    // Cesium ion token（正式上線前建議在 ion 重新生一個新的）
     Cesium.Ion.defaultAccessToken =
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    /* OpenStreetMap 底圖（無需 token，官方推薦） */
-    const osm = new Cesium.OpenStreetMapImageryProvider({
-      url: "https://a.tile.openstreetmap.org/"
-    });
-
-    /* Viewer with OSM */
+    // 1）先建立 Viewer（保留底圖選擇器）
     const viewer = new Cesium.Viewer("cesiumContainer", {
-      imageryProvider: osm,      // ← 預設使用 OSM！
-      baseLayerPicker: false,    // ← 不讓使用者切換（UI 更乾淨）
       animation: false,
       timeline: false,
       geocoder: false,
       homeButton: true,
       sceneModePicker: false,
+      baseLayerPicker: true,      // 要用它來選 OSM
       navigationHelpButton: false,
       fullscreenButton: false,
       infoBox: false,
@@ -87,14 +88,30 @@
 
     viewer.scene.globe.depthTestAgainstTerrain = true;
 
+    // 2）自動選擇「OpenStreetMap Map」作為預設底圖
+    const imageryVMs = viewer.baseLayerPicker.viewModel.imageryProviderViewModels;
+    const osmVM = imageryVMs.find(vm =>
+      vm.name && vm.name.indexOf("OpenStreetMap") !== -1
+    );
+    if (osmVM) {
+      viewer.baseLayerPicker.viewModel.selectedImagery = osmVM;
+    } else {
+      console.warn("OpenStreetMap imagery not found; using default imagery.");
+    }
+
+    // 3）DD 座標 + Copy 邏輯
     const coordTextEl = document.getElementById("coordText");
     const copyBtn = document.getElementById("copyBtn");
-
     let lastCoord = "";
 
     viewer.screenSpaceEventHandler.setInputAction((click) => {
       const pos = viewer.scene.pickPosition(click.position);
-      if (!Cesium.defined(pos)) return;
+      if (!Cesium.defined(pos)) {
+        coordTextEl.textContent = "No position detected – try another point.";
+        lastCoord = "";
+        copyBtn.disabled = true;
+        return;
+      }
 
       const carto = Cesium.Cartographic.fromCartesian(pos);
       const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(6);
@@ -107,9 +124,14 @@
 
     copyBtn.addEventListener("click", async () => {
       if (!lastCoord) return;
-      await navigator.clipboard.writeText(lastCoord);
-      copyBtn.textContent = "Copied!";
-      setTimeout(() => (copyBtn.textContent = "Copy"), 1200);
+      try {
+        await navigator.clipboard.writeText(lastCoord);
+        const old = copyBtn.textContent;
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => (copyBtn.textContent = old), 1200);
+      } catch (e) {
+        console.error("Copy failed:", e);
+      }
     });
   </script>
 </body>
