@@ -82,23 +82,17 @@
   <!-- CesiumJS 主程式 -->
   <script src="https://unpkg.com/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
   <script>
-    // ① Cesium ion token（正式上線前建議在 ion 重新產一個新的）
+    // Cesium ion token
     Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    // ② 建立「帶地名」的世界底圖（AERIAL_WITH_LABELS）
-    const worldImageryWithLabels = Cesium.createWorldImagery({
-      style: Cesium.IonWorldImageryStyle.AERIAL_WITH_LABELS
-    });
-
-    // ③ 建立 Viewer，套用上面的底圖
+    // 使用 Cesium 預設底圖（這個版本你之前已經成功跑過）
     const viewer = new Cesium.Viewer("cesiumContainer", {
-      imageryProvider: worldImageryWithLabels,
-      baseLayerPicker: false,    // 不讓使用者亂切底圖
       animation: false,
       timeline: false,
       geocoder: false,
       homeButton: true,
       sceneModePicker: false,
+      baseLayerPicker: true,      // 之後如果要鎖定底圖，可以改成 false
       navigationHelpButton: false,
       fullscreenButton: false,
       infoBox: false,
@@ -129,7 +123,7 @@
       const lat = Cesium.Math.toDegrees(cartographic.latitude);
       const lon = Cesium.Math.toDegrees(cartographic.longitude);
 
-      // ④ Decimal Degrees（DD）：緯度, 經度
+      // Decimal Degrees（DD）：緯度, 經度
       const latStr = lat.toFixed(6);
       const lonStr = lon.toFixed(6);
 
@@ -140,7 +134,7 @@
       console.log("Selected coordinates (DD):", lastCoordText);
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-    // ⑤ Copy 按鈕：一鍵複製 DD 座標
+    // Copy 按鈕：一鍵複製 DD 座標
     copyBtn.addEventListener("click", async () => {
       if (!lastCoordText) return;
 
