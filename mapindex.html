@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Born to Meet – Coordinate Globe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- CesiumJS CSS -->
+  <link
+    href="https://unpkg.com/cesium@1.123.0/Build/Cesium/Widgets/widgets.css"
+    rel="stylesheet"
+  />
+
+  <style>
+    html, body, #cesiumContainer {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+    }
+
+    /* 座標顯示膠囊 */
+    #coordPanel {
+      position: absolute;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      padding: 10px 14px;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      font-size: 14px;
+      border-radius: 999px;
+      backdrop-filter: blur(8px);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      z-index: 10;
+    }
+
+    #coordPanel span.label {
+      opacity: 0.7;
+    }
+
+    #coordPanel code {
+      font-family: Menlo, Consolas, monospace;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+
+  <div id="coordPanel">
+    <span class="label">Selected:</span>
+    <code id="coordText">Click on the globe to get coordinates</code>
+  </div>
+
+  <!-- CesiumJS 主程式 -->
+  <script src="https://unpkg.com/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
+  <script>
+    // 放你的 Cesium ion token
+    Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
+
+    // 先用預設的世界地形＋底圖就可以
+    const viewer = new Cesium.Viewer("cesiumContainer", {
+      animation: false,
+      timeline: false,
+      geocoder: false,
+      homeButton: true,
+      sceneModePicker: false,
+      baseLayerPicker: true,
+      navigationHelpButton: false,
+      fullscreenButton: false,
+      infoBox: false,
+      selectionIndicator: false
+    });
+
+    viewer.scene.globe.depthTestAgainstTerrain = true;
+
+    const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+    const coordTextEl = document.getElementById("coordText");
+
+    handler.setInputAction(function (click) {
+      const earthPosition = viewer.scene.pickPosition(click.position);
+
+      if (!Cesium.defined(earthPosition)) {
+        coordTextEl.textContent = "No position detected – try another point.";
+        return;
+      }
+
+      const cartographic = Cesium.Cartographic.fromCartesian(earthPosition);
+
+      const lat = Cesium.Math.toDegrees(cartographic.latitude);
+      const lon = Cesium.Math.toDegrees(cartographic.longitude);
+
+      const latStr = lat.toFixed(6);
+      const lonStr = lon.toFixed(6);
+
+      coordTextEl.textContent = `Lat: ${latStr}°, Lon: ${lonStr}°`;
+
+      console.log("Selected coordinates:", latStr, lonStr);
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+  </script>
+</body>
+</html>
