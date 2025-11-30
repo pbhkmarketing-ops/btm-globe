@@ -2,14 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Born to Meet – Coordinate Globe</title>
+  <title>Born to Meet – OpenStreetMap Globe</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- CesiumJS CSS -->
-  <link
-    href="https://unpkg.com/cesium@1.123.0/Build/Cesium/Widgets/widgets.css"
-    rel="stylesheet"
-  />
+  <link href="https://unpkg.com/cesium@1.123.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
 
   <style>
     html, body, #cesiumContainer {
@@ -18,11 +14,9 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    /* 座標顯示膠囊 */
     #coordPanel {
       position: absolute;
       left: 50%;
@@ -33,16 +27,12 @@
       color: #fff;
       font-size: 14px;
       border-radius: 999px;
-      backdrop-filter: blur(8px);
       display: inline-flex;
       gap: 8px;
       align-items: center;
       z-index: 10;
       white-space: nowrap;
-    }
-
-    #coordPanel span.label {
-      opacity: 0.7;
+      backdrop-filter: blur(8px);
     }
 
     #coordPanel code {
@@ -59,40 +49,36 @@
       font-size: 12px;
       cursor: pointer;
     }
-
-    #copyBtn:disabled {
-      opacity: 0.4;
-      cursor: default;
-    }
-
-    #copyBtn.copied {
-      background: rgba(255, 255, 255, 0.35);
-    }
   </style>
 </head>
 <body>
   <div id="cesiumContainer"></div>
 
   <div id="coordPanel">
-    <span class="label">Selected (DD):</span>
+    <span>Selected (DD):</span>
     <code id="coordText">Click on the globe to get coordinates</code>
-    <button id="copyBtn" type="button" disabled>Copy</button>
+    <button id="copyBtn" disabled>Copy</button>
   </div>
 
-  <!-- CesiumJS 主程式 -->
   <script src="https://unpkg.com/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
   <script>
-    // Cesium ion token
-    Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
+    Cesium.Ion.defaultAccessToken =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    // 使用 Cesium 預設底圖（這個版本你之前已經成功跑過）
+    /* OpenStreetMap 底圖（無需 token，官方推薦） */
+    const osm = new Cesium.OpenStreetMapImageryProvider({
+      url: "https://a.tile.openstreetmap.org/"
+    });
+
+    /* Viewer with OSM */
     const viewer = new Cesium.Viewer("cesiumContainer", {
+      imageryProvider: osm,      // ← 預設使用 OSM！
+      baseLayerPicker: false,    // ← 不讓使用者切換（UI 更乾淨）
       animation: false,
       timeline: false,
       geocoder: false,
       homeButton: true,
       sceneModePicker: false,
-      baseLayerPicker: true,      // 之後如果要鎖定底圖，可以改成 false
       navigationHelpButton: false,
       fullscreenButton: false,
       infoBox: false,
@@ -101,58 +87,29 @@
 
     viewer.scene.globe.depthTestAgainstTerrain = true;
 
-    const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     const coordTextEl = document.getElementById("coordText");
     const copyBtn = document.getElementById("copyBtn");
 
-    // 儲存最近一次的 DD 座標字串，例如 "31.942690, 42.849032"
-    let lastCoordText = "";
+    let lastCoord = "";
 
-    handler.setInputAction(function (click) {
-      const earthPosition = viewer.scene.pickPosition(click.position);
+    viewer.screenSpaceEventHandler.setInputAction((click) => {
+      const pos = viewer.scene.pickPosition(click.position);
+      if (!Cesium.defined(pos)) return;
 
-      if (!Cesium.defined(earthPosition)) {
-        coordTextEl.textContent = "No position detected – try another point.";
-        lastCoordText = "";
-        copyBtn.disabled = true;
-        return;
-      }
+      const carto = Cesium.Cartographic.fromCartesian(pos);
+      const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(6);
+      const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(6);
 
-      const cartographic = Cesium.Cartographic.fromCartesian(earthPosition);
-
-      const lat = Cesium.Math.toDegrees(cartographic.latitude);
-      const lon = Cesium.Math.toDegrees(cartographic.longitude);
-
-      // Decimal Degrees（DD）：緯度, 經度
-      const latStr = lat.toFixed(6);
-      const lonStr = lon.toFixed(6);
-
-      lastCoordText = `${latStr}, ${lonStr}`;
-      coordTextEl.textContent = lastCoordText;
+      lastCoord = `${lat}, ${lon}`;
+      coordTextEl.textContent = lastCoord;
       copyBtn.disabled = false;
-
-      console.log("Selected coordinates (DD):", lastCoordText);
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-    // Copy 按鈕：一鍵複製 DD 座標
     copyBtn.addEventListener("click", async () => {
-      if (!lastCoordText) return;
-
-      try {
-        await navigator.clipboard.writeText(lastCoordText);
-
-        const original = coordTextEl.textContent;
-        coordTextEl.textContent = "Copied!";
-        copyBtn.classList.add("copied");
-
-        setTimeout(() => {
-          coordTextEl.textContent = original;
-          copyBtn.classList.remove("copied");
-        }, 1200);
-      } catch (err) {
-        console.error("Copy failed:", err);
-        coordTextEl.textContent = "Copy failed – try again";
-      }
+      if (!lastCoord) return;
+      await navigator.clipboard.writeText(lastCoord);
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => (copyBtn.textContent = "Copy"), 1200);
     });
   </script>
 </body>
