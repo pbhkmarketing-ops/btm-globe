@@ -82,17 +82,23 @@
   <!-- CesiumJS 主程式 -->
   <script src="https://unpkg.com/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
   <script>
-    // ① 放你的 Cesium ion token
+    // ① 放你的 Cesium ion token（保留英文引號）
     Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    // ② 建立 Viewer（使用 Cesium 預設底圖）
+    // ② 建立「帶地名」的世界底圖（AERIAL_WITH_LABELS）
+    const worldImageryWithLabels = Cesium.createWorldImagery({
+      style: Cesium.IonWorldImageryStyle.AERIAL_WITH_LABELS
+    });
+
+    // ③ 建立 Viewer，套用上面的底圖
     const viewer = new Cesium.Viewer("cesiumContainer", {
+      imageryProvider: worldImageryWithLabels,
+      baseLayerPicker: false,    // 不讓使用者亂切底圖
       animation: false,
       timeline: false,
       geocoder: false,
       homeButton: true,
       sceneModePicker: false,
-      baseLayerPicker: true,      // 之後你喜歡可以關掉或鎖定某個底圖
       navigationHelpButton: false,
       fullscreenButton: false,
       infoBox: false,
@@ -105,7 +111,7 @@
     const coordTextEl = document.getElementById("coordText");
     const copyBtn = document.getElementById("copyBtn");
 
-    // 儲存最近一次選到的 DD 座標字串，例如 "31.942690, 42.849032"
+    // 儲存最近一次的 DD 座標字串，例如 "31.942690, 42.849032"
     let lastCoordText = "";
 
     handler.setInputAction(function (click) {
@@ -123,11 +129,10 @@
       const lat = Cesium.Math.toDegrees(cartographic.latitude);
       const lon = Cesium.Math.toDegrees(cartographic.longitude);
 
-      // ③ 這裡是 Decimal Degrees（DD）：純小數，不加 N/E
+      // ④ Decimal Degrees（DD）：緯度, 經度
       const latStr = lat.toFixed(6);
       const lonStr = lon.toFixed(6);
 
-      // 顯示成「31.942690, 42.849032」
       lastCoordText = `${latStr}, ${lonStr}`;
       coordTextEl.textContent = lastCoordText;
       copyBtn.disabled = false;
@@ -135,7 +140,7 @@
       console.log("Selected coordinates (DD):", lastCoordText);
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-    // ④ Copy 按鈕，一鍵複製 DD 座標
+    // ⑤ Copy 按鈕：一鍵複製 DD 座標
     copyBtn.addEventListener("click", async () => {
       if (!lastCoordText) return;
 
@@ -158,4 +163,3 @@
   </script>
 </body>
 </html>
-
