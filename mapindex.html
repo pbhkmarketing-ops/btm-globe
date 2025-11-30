@@ -24,7 +24,6 @@
         sans-serif;
     }
 
-    /* 座標顯示 bar */
     #coordPanel {
       position: absolute;
       left: 50%;
@@ -67,7 +66,6 @@
 <body>
   <div id="cesiumContainer"></div>
 
-  <!-- 座標顯示 -->
   <div id="coordPanel">
     <span>Selected (DD):</span>
     <code id="coordText">Click on the globe to get coordinates</code>
@@ -77,18 +75,19 @@
   <!-- CesiumJS -->
   <script src="https://unpkg.com/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
   <script>
-    // 你的 Cesium ion token（這版其實只用在 logo / attribution，不拿 ion imagery）
+    // 你的 Cesium ion token
     Cesium.Ion.defaultAccessToken =
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    // 1）直接用 OpenStreetMap 當底圖
+    // 1）建立 OpenStreetMap provider
     const osmProvider = new Cesium.OpenStreetMapImageryProvider({
-      url: "https://tile.openstreetmap.org/",
+      url: "https://tile.openstreetmap.org/"
     });
 
+    // 2）用 baseLayer 指定 OSM 為預設底圖
     const viewer = new Cesium.Viewer("cesiumContainer", {
-      imageryProvider: osmProvider,
-      baseLayerPicker: false, // 不用內建 picker，避免又被換回 Bing
+      baseLayer: Cesium.ImageryLayer.fromProviderAsync(osmProvider),
+      baseLayerPicker: false,   // 關掉原生選單，避免被換回 Bing
       animation: false,
       timeline: false,
       geocoder: false,
@@ -97,12 +96,12 @@
       navigationHelpButton: false,
       fullscreenButton: false,
       infoBox: false,
-      selectionIndicator: false,
+      selectionIndicator: false
     });
 
     viewer.scene.globe.depthTestAgainstTerrain = true;
 
-    // 2）DD 座標 + Copy
+    // 3）DD 座標 + Copy
     const coordTextEl = document.getElementById("coordText");
     const copyBtn = document.getElementById("copyBtn");
     let lastCoord = "";
@@ -110,7 +109,6 @@
     viewer.screenSpaceEventHandler.setInputAction(
       function (click) {
         const pos = viewer.scene.pickPosition(click.position);
-
         if (!Cesium.defined(pos)) {
           coordTextEl.textContent =
             "No position detected – try another point.";
