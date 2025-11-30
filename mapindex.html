@@ -2,13 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Born to Meet – OpenStreetMap Globe</title>
+  <title>Born to Meet – Coordinate Globe (OSM)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <link href="https://unpkg.com/cesium@1.123.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <!-- CesiumJS CSS -->
+  <link
+    href="https://unpkg.com/cesium@1.123.0/Build/Cesium/Widgets/widgets.css"
+    rel="stylesheet"
+  />
 
   <style>
-    html, body, #cesiumContainer {
+    html,
+    body,
+    #cesiumContainer {
       margin: 0;
       padding: 0;
       width: 100%;
@@ -18,6 +24,7 @@
         sans-serif;
     }
 
+    /* 座標顯示 bar */
     #coordPanel {
       position: absolute;
       left: 50%;
@@ -60,67 +67,68 @@
 <body>
   <div id="cesiumContainer"></div>
 
+  <!-- 座標顯示 -->
   <div id="coordPanel">
     <span>Selected (DD):</span>
     <code id="coordText">Click on the globe to get coordinates</code>
     <button id="copyBtn" disabled>Copy</button>
   </div>
 
+  <!-- CesiumJS -->
   <script src="https://unpkg.com/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
   <script>
-    // Cesium ion token（正式上線前建議在 ion 重新生一個新的）
+    // 你的 Cesium ion token（這版其實只用在 logo / attribution，不拿 ion imagery）
     Cesium.Ion.defaultAccessToken =
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    // 1）先建立 Viewer（保留底圖選擇器）
+    // 1）直接用 OpenStreetMap 當底圖
+    const osmProvider = new Cesium.OpenStreetMapImageryProvider({
+      url: "https://tile.openstreetmap.org/",
+    });
+
     const viewer = new Cesium.Viewer("cesiumContainer", {
+      imageryProvider: osmProvider,
+      baseLayerPicker: false, // 不用內建 picker，避免又被換回 Bing
       animation: false,
       timeline: false,
       geocoder: false,
       homeButton: true,
       sceneModePicker: false,
-      baseLayerPicker: true,      // 要用它來選 OSM
       navigationHelpButton: false,
       fullscreenButton: false,
       infoBox: false,
-      selectionIndicator: false
+      selectionIndicator: false,
     });
 
     viewer.scene.globe.depthTestAgainstTerrain = true;
 
-    // 2）自動選擇「OpenStreetMap Map」作為預設底圖
-    const imageryVMs = viewer.baseLayerPicker.viewModel.imageryProviderViewModels;
-    const osmVM = imageryVMs.find(vm =>
-      vm.name && vm.name.indexOf("OpenStreetMap") !== -1
-    );
-    if (osmVM) {
-      viewer.baseLayerPicker.viewModel.selectedImagery = osmVM;
-    } else {
-      console.warn("OpenStreetMap imagery not found; using default imagery.");
-    }
-
-    // 3）DD 座標 + Copy 邏輯
+    // 2）DD 座標 + Copy
     const coordTextEl = document.getElementById("coordText");
     const copyBtn = document.getElementById("copyBtn");
     let lastCoord = "";
 
-    viewer.screenSpaceEventHandler.setInputAction((click) => {
-      const pos = viewer.scene.pickPosition(click.position);
-      if (!Cesium.defined(pos)) {
-        coordTextEl.textContent = "No position detected – try another point.";
-        lastCoord = "";
-        copyBtn.disabled = true;
-        return;
-      }
+    viewer.screenSpaceEventHandler.setInputAction(
+      function (click) {
+        const pos = viewer.scene.pickPosition(click.position);
 
-      const carto = Cesium.Cartographic.fromCartesian(pos);
-      const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(6);
-      const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(6);
+        if (!Cesium.defined(pos)) {
+          coordTextEl.textContent =
+            "No position detected – try another point.";
+          lastCoord = "";
+          copyBtn.disabled = true;
+          return;
+        }
 
-      lastCoord = `${lat}, ${lon}`;
-      coordTextEl.textContent = lastCoord;
-      copyBtn.disabled = false;
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+        const carto = Cesium.Cartographic.fromCartesian(pos);
+        const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(6);
+        const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(6);
+
+        lastCoord = `${lat}, ${lon}`;
+        coordTextEl.textContent = lastCoord;
+        copyBtn.disabled = false;
+      },
+      Cesium.ScreenSpaceEventType.LEFT_CLICK
+    );
 
     copyBtn.addEventListener("click", async () => {
       if (!lastCoord) return;
