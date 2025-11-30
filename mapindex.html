@@ -34,10 +34,11 @@
       font-size: 14px;
       border-radius: 999px;
       backdrop-filter: blur(8px);
-      display: flex;
+      display: inline-flex;
       gap: 8px;
       align-items: center;
       z-index: 10;
+      white-space: nowrap;
     }
 
     #coordPanel span.label {
@@ -48,30 +49,56 @@
       font-family: Menlo, Consolas, monospace;
       font-size: 13px;
     }
+
+    #copyBtn {
+      border: none;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #copyBtn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    #copyBtn.copied {
+      background: rgba(255, 255, 255, 0.35);
+    }
   </style>
 </head>
 <body>
   <div id="cesiumContainer"></div>
 
   <div id="coordPanel">
-    <span class="label">Selected:</span>
+    <span class="label">Selected (DD):</span>
     <code id="coordText">Click on the globe to get coordinates</code>
+    <button id="copyBtn" type="button" disabled>Copy</button>
   </div>
 
   <!-- CesiumJS 主程式 -->
   <script src="https://unpkg.com/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
   <script>
-    // 放你的 Cesium ion token
+    // ① 放你的 Cesium ion token
     Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    // 先用預設的世界地形＋底圖就可以
+    // ② 使用你 ion 裡的 Google Maps 2D Roadmap（有國家 / 城市標籤）
+    const imageryProvider = new Cesium.IonImageryProvider({
+      assetId: 3830184   // 如要改用其他底圖，換成對應 assetId
+    });
+
+    // ③ 建立 Viewer，套用上面這個影像圖層
     const viewer = new Cesium.Viewer("cesiumContainer", {
+      imageryProvider,
+      baseLayerPicker: false,
       animation: false,
       timeline: false,
       geocoder: false,
       homeButton: true,
       sceneModePicker: false,
-      baseLayerPicker: true,
       navigationHelpButton: false,
       fullscreenButton: false,
       infoBox: false,
@@ -82,12 +109,18 @@
 
     const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     const coordTextEl = document.getElementById("coordText");
+    const copyBtn = document.getElementById("copyBtn");
+
+    // 儲存最近一次的 DD 座標字串（如 "31.942690, 42.849032"）
+    let lastCoordText = "";
 
     handler.setInputAction(function (click) {
       const earthPosition = viewer.scene.pickPosition(click.position);
 
       if (!Cesium.defined(earthPosition)) {
         coordTextEl.textContent = "No position detected – try another point.";
+        lastCoordText = "";
+        copyBtn.disabled = true;
         return;
       }
 
@@ -96,13 +129,10 @@
       const lat = Cesium.Math.toDegrees(cartographic.latitude);
       const lon = Cesium.Math.toDegrees(cartographic.longitude);
 
+      // ④ 這裡是 Decimal Degrees（DD）：不帶 N/E 字樣，純小數
       const latStr = lat.toFixed(6);
       const lonStr = lon.toFixed(6);
 
-      coordTextEl.textContent = `Lat: ${latStr}°, Lon: ${lonStr}°`;
-
-      console.log("Selected coordinates:", latStr, lonStr);
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-  </script>
-</body>
-</html>
+      // 顯示成「31.942690, 42.849032」
+      lastCoordText = `${latStr}, ${lonStr}`;
+      coordTe
