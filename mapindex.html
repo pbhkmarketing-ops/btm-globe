@@ -85,20 +85,14 @@
     // ① 放你的 Cesium ion token
     Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    // ② 使用你 ion 裡的 Google Maps 2D Roadmap（有國家 / 城市標籤）
-    const imageryProvider = new Cesium.IonImageryProvider({
-      assetId: 3830184   // 如要改用其他底圖，換成對應 assetId
-    });
-
-    // ③ 建立 Viewer，套用上面這個影像圖層
+    // ② 建立 Viewer（使用 Cesium 預設底圖）
     const viewer = new Cesium.Viewer("cesiumContainer", {
-      imageryProvider,
-      baseLayerPicker: false,
       animation: false,
       timeline: false,
       geocoder: false,
       homeButton: true,
       sceneModePicker: false,
+      baseLayerPicker: true,      // 之後你喜歡可以關掉或鎖定某個底圖
       navigationHelpButton: false,
       fullscreenButton: false,
       infoBox: false,
@@ -111,7 +105,7 @@
     const coordTextEl = document.getElementById("coordText");
     const copyBtn = document.getElementById("copyBtn");
 
-    // 儲存最近一次的 DD 座標字串（如 "31.942690, 42.849032"）
+    // 儲存最近一次選到的 DD 座標字串，例如 "31.942690, 42.849032"
     let lastCoordText = "";
 
     handler.setInputAction(function (click) {
@@ -129,10 +123,39 @@
       const lat = Cesium.Math.toDegrees(cartographic.latitude);
       const lon = Cesium.Math.toDegrees(cartographic.longitude);
 
-      // ④ 這裡是 Decimal Degrees（DD）：不帶 N/E 字樣，純小數
+      // ③ 這裡是 Decimal Degrees（DD）：純小數，不加 N/E
       const latStr = lat.toFixed(6);
       const lonStr = lon.toFixed(6);
 
       // 顯示成「31.942690, 42.849032」
       lastCoordText = `${latStr}, ${lonStr}`;
-      coordTe
+      coordTextEl.textContent = lastCoordText;
+      copyBtn.disabled = false;
+
+      console.log("Selected coordinates (DD):", lastCoordText);
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    // ④ Copy 按鈕，一鍵複製 DD 座標
+    copyBtn.addEventListener("click", async () => {
+      if (!lastCoordText) return;
+
+      try {
+        await navigator.clipboard.writeText(lastCoordText);
+
+        const original = coordTextEl.textContent;
+        coordTextEl.textContent = "Copied!";
+        copyBtn.classList.add("copied");
+
+        setTimeout(() => {
+          coordTextEl.textContent = original;
+          copyBtn.classList.remove("copied");
+        }, 1200);
+      } catch (err) {
+        console.error("Copy failed:", err);
+        coordTextEl.textContent = "Copy failed – try again";
+      }
+    });
+  </script>
+</body>
+</html>
+
