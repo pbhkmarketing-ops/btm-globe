@@ -15,7 +15,7 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    /* 座標顯示面板（放在上方） */
+    /* 座標顯示面板：上方、放大字體 */
     #coordPanel {
       position: absolute;
       top: 16px;
@@ -31,6 +31,8 @@
       gap: 10px;
       box-shadow: 0 6px 20px rgba(0,0,0,0.45);
       z-index: 10;
+
+      /* 重要：橫向排列＋必要時才自動換行 */
       flex-wrap: wrap;
     }
 
@@ -41,6 +43,7 @@
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap; /* 儘量單行，空間不夠時才被迫斷行 */
     }
 
     #copyBtn {
@@ -51,33 +54,33 @@
       color: #fff;
       font-size: 16px;
       cursor: pointer;
-      flex-shrink: 0;
+
+      flex: 0 0 auto;
+      margin-left: auto; /* 無論如何都貼在最右邊 */
     }
 
     #copyBtn:disabled { opacity: 0.4; cursor: default; }
 
-    /* 手機 UI：自動換行、字體更大 */
-   @media (max-width: 600px) {
-  #coordPanel {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 10px 12px;
-    top: 14px;
-    left: 8px; right: 8px;
-    border-radius: 16px;
-  }
+    /* 手機：略縮 padding，但仍保持一行為主，必要時自然換行 */
+    @media (max-width: 600px) {
+      #coordPanel {
+        top: 14px;
+        left: 8px;
+        right: 8px;
+        padding: 10px 12px;
+        border-radius: 16px;
+        gap: 8px;
+      }
 
-  #coordText {
-    font-size: 17px;
-    width: 100%;
-  }
+      #coordText {
+        font-size: 17px;
+      }
 
-  #copyBtn {
-    font-size: 16px;
-    align-self: flex-end;
-  }
-}
+      #copyBtn {
+        font-size: 16px;
+        padding: 6px 14px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -95,7 +98,7 @@
     Cesium.Ion.defaultAccessToken =
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    /* 使用 OpenStreetMap 作為預設地圖 */
+    // 使用 OpenStreetMap 作為預設地圖
     const osmProvider = new Cesium.OpenStreetMapImageryProvider({
       url: "https://tile.openstreetmap.org/"
     });
@@ -120,7 +123,7 @@
     const copyBtn = document.getElementById("copyBtn");
     let lastCoord = "";
 
-    /* 點擊地球 → 顯示 DD 座標 */
+    // 點擊地球 → 顯示 DD 座標
     viewer.screenSpaceEventHandler.setInputAction(function (click) {
       const pos = viewer.scene.pickPosition(click.position);
       if (!Cesium.defined(pos)) {
@@ -136,16 +139,48 @@
 
       lastCoord = `${lat}, ${lon}`;
       coordTextEl.textContent = lastCoord;
+      coordTextEl.style.whiteSpace = "normal"; // 讓長座標可以自動折行
       copyBtn.disabled = false;
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-    /* Copy 按鈕 */
-    copyBtn.addEventListener("click", async () => {
+    // Copy 功能：Clipboard API + 備援方案（桌機、手機皆可）
+    function fallbackCopyText(text) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand("copy");
+      } catch (e) {
+        console.error("Fallback copy failed", e);
+      }
+      document.body.removeChild(textarea);
+    }
+
+    copyBtn.addEventListener("click", () => {
       if (!lastCoord) return;
-      await navigator.clipboard.writeText(lastCoord);
-      const old = copyBtn.textContent;
-      copyBtn.textContent = "Copied!";
-      setTimeout(() => (copyBtn.textContent = old), 1200);
+
+      const showFeedback = () => {
+        const old = copyBtn.textContent;
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => (copyBtn.textContent = old), 1200);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(lastCoord)
+          .then(showFeedback)
+          .catch(err => {
+            console.warn("Clipboard API failed, using fallback.", err);
+            fallbackCopyText(lastCoord);
+            showFeedback();
+          });
+      } else {
+        fallbackCopyText(lastCoord);
+        showFeedback();
+      }
     });
   </script>
 </body>
