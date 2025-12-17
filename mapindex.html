@@ -3,82 +3,111 @@
 <head>
   <meta charset="UTF-8" />
   <title>Born to Meet – Coordinate Globe (OSM)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
   <link href="https://unpkg.com/cesium@1.123.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet"/>
 
   <style>
+    /* 引入變數，與主 APP 保持一致 */
+    :root {
+      --btm-bg: #efeddc;
+      --btm-bg-active: #e7e4d0;
+      --btm-text: #222222;
+      --btm-border: rgba(0,0,0,0.12);
+      --btm-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+
     html, body, #cesiumContainer {
       margin: 0; padding: 0;
       width: 100%; height: 100%;
       overflow: hidden;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #000; /* Loading 時背景 */
     }
 
-    /* 座標顯示面板：上方、放大字體 */
+    /* 隱藏 Cesium 預設的 Credits 浮水印，讓畫面更乾淨 (可選) */
+    .cesium-viewer-bottom {
+      display: none;
+    }
+
+    /* 座標顯示面板：改為 Born to Meet 風格 */
     #coordPanel {
       position: absolute;
       top: 16px;
-      left: 10px;
-      right: 10px;
-      padding: 12px 16px;
-      background: rgba(0,0,0,0.75);
-      color: #fff;
-      backdrop-filter: blur(10px);
-      border-radius: 18px;
+      left: 16px;
+      right: 16px;
+      padding: 10px 14px;
+      
+      /* BTM 風格設定 */
+      background: var(--btm-bg);
+      color: var(--btm-text);
+      border: 1px solid var(--btm-border);
+      box-shadow: var(--btm-shadow);
+      
+      border-radius: 12px;
       display: flex;
       align-items: center;
-      gap: 10px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+      justify-content: space-between;
+      gap: 12px;
       z-index: 10;
-
-      /* 重要：橫向排列＋必要時才自動換行 */
-      flex-wrap: wrap;
+      transition: all 0.3s ease;
     }
 
     #coordText {
-      font-family: Menlo, Consolas, monospace;
-      font-size: 18px;
-      flex: 1 1 auto;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap; /* 儘量單行，空間不夠時才被迫斷行 */
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.3;
+      flex: 1;
+      /* 讓數字等寬排列，但保持 sans-serif 風格 */
+      font-variant-numeric: tabular-nums; 
     }
 
+    /* 複製按鈕：白色卡片式設計 */
     #copyBtn {
-      border: none;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.22);
-      color: #fff;
-      font-size: 16px;
+      border: 1px solid var(--btm-border);
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--btm-text);
+      font-size: 13px;
+      font-weight: 600;
       cursor: pointer;
-
-      flex: 0 0 auto;
-      margin-left: auto; /* 無論如何都貼在最右邊 */
+      white-space: nowrap;
+      transition: background 0.1s, transform 0.1s;
+      
+      /* 移除手機點擊高亮 */
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
     }
 
-    #copyBtn:disabled { opacity: 0.4; cursor: default; }
+    #copyBtn:active {
+      background: var(--btm-bg-active);
+      transform: scale(0.96);
+    }
 
-    /* 手機：略縮 padding，但仍保持一行為主，必要時自然換行 */
+    #copyBtn:disabled {
+      opacity: 0.5;
+      cursor: default;
+      background: #f5f5f5;
+      transform: none;
+    }
+
+    /* 手機版適配 */
     @media (max-width: 600px) {
       #coordPanel {
-        top: 14px;
-        left: 8px;
-        right: 8px;
+        top: 12px;
+        left: 12px;
+        right: 12px;
         padding: 10px 12px;
-        border-radius: 16px;
-        gap: 8px;
       }
 
       #coordText {
-        font-size: 17px;
+        font-size: 14px;
       }
 
       #copyBtn {
-        font-size: 16px;
-        padding: 6px 14px;
+        font-size: 13px;
+        padding: 6px 12px;
       }
     }
   </style>
@@ -89,16 +118,17 @@
 
   <!-- 座標面板 -->
   <div id="coordPanel">
-    <code id="coordText">Click on the globe to get coordinates</code>
+    <span id="coordText">Click globe to pick</span>
     <button id="copyBtn" disabled>Copy</button>
   </div>
 
   <script src="https://unpkg.com/cesium@1.123.0/Build/Cesium/Cesium.js"></script>
   <script>
+    // Token 保持不變
     Cesium.Ion.defaultAccessToken =
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJhNDY5NjU4NS1lZGIxLTQzMzctYmE2Zi1hYWFkMmVmYzFjZTIiLCJpZCI6MzY1MTkwLCJpYXQiOjE3NjQ0ODQ2Nzh9.B_gMoVxb53Y_-tjzZcF-GK3FrVyaFTaPPrrmcwjJMSE";
 
-    // 使用 OpenStreetMap 作為預設地圖
+    // 使用 OpenStreetMap
     const osmProvider = new Cesium.OpenStreetMapImageryProvider({
       url: "https://tile.openstreetmap.org/"
     });
@@ -109,27 +139,38 @@
       animation: false,
       timeline: false,
       geocoder: false,
-      homeButton: true,
+      homeButton: false, // 隱藏 home 以保持簡潔
       sceneModePicker: false,
       navigationHelpButton: false,
       fullscreenButton: false,
       infoBox: false,
-      selectionIndicator: false
+      selectionIndicator: false,
+      vrButton: false
     });
 
+    // 開啟地形深度檢測，讓標記更準確
     viewer.scene.globe.depthTestAgainstTerrain = true;
+    
+    // 優化手機觸控操作
+    viewer.scene.screenSpaceCameraController.tiltEventTypes = [
+      Cesium.CameraEventType.PINCH,
+      Cesium.CameraEventType.RIGHT_DRAG
+    ];
+    viewer.scene.screenSpaceCameraController.zoomEventTypes = [
+      Cesium.CameraEventType.PINCH,
+      Cesium.CameraEventType.WHEEL
+    ];
 
     const coordTextEl = document.getElementById("coordText");
     const copyBtn = document.getElementById("copyBtn");
     let lastCoord = "";
 
-    // 點擊地球 → 顯示 DD 座標
+    // 點擊地球 → 顯示座標
     viewer.screenSpaceEventHandler.setInputAction(function (click) {
       const pos = viewer.scene.pickPosition(click.position);
+      
+      // 如果點擊到天空或無效區域
       if (!Cesium.defined(pos)) {
-        coordTextEl.textContent = "Click on the globe to get coordinates";
-        lastCoord = "";
-        copyBtn.disabled = true;
         return;
       }
 
@@ -138,12 +179,22 @@
       const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(6);
 
       lastCoord = `${lat}, ${lon}`;
+      
+      // 更新 UI
       coordTextEl.textContent = lastCoord;
-      coordTextEl.style.whiteSpace = "normal"; // 讓長座標可以自動折行
       copyBtn.disabled = false;
+      copyBtn.textContent = "Copy"; 
+      
+      // 增加一個小標記點 (Optional UI feedback)
+      viewer.entities.removeAll();
+      viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(parseFloat(lon), parseFloat(lat)),
+          point: { pixelSize: 10, color: Cesium.Color.fromCssColorString('#efeddc'), outlineColor: Cesium.Color.BLACK, outlineWidth: 2 }
+      });
+
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-    // Copy 功能：Clipboard API + 備援方案（桌機、手機皆可）
+    // 複製功能
     function fallbackCopyText(text) {
       const textarea = document.createElement("textarea");
       textarea.value = text;
@@ -164,16 +215,22 @@
       if (!lastCoord) return;
 
       const showFeedback = () => {
-        const old = copyBtn.textContent;
+        const oldText = copyBtn.textContent;
         copyBtn.textContent = "Copied!";
-        setTimeout(() => (copyBtn.textContent = old), 1200);
+        copyBtn.style.background = "#222"; // 成功時變黑
+        copyBtn.style.color = "#fff";
+        
+        setTimeout(() => {
+          copyBtn.textContent = "Copy";
+          copyBtn.style.background = "#fff"; // 還原
+          copyBtn.style.color = "#222";
+        }, 1500);
       };
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(lastCoord)
           .then(showFeedback)
           .catch(err => {
-            console.warn("Clipboard API failed, using fallback.", err);
             fallbackCopyText(lastCoord);
             showFeedback();
           });
